@@ -100,14 +100,14 @@ def _is_executable(path: str) -> bool:
 def _try_create_firefox_webdriver() -> WebDriver | None:
     try:
         return create_firefox_webdriver()
-    except Exception:
-        return None
+    except Exception as err:
+        return None, err
 
 def _try_create_chromium_webdriver() -> WebDriver | None:
     try:
         return create_chromium_webdriver()
-    except Exception:
-        return None
+    except Exception as err:
+        return None, err
 
 class _WebdriverState:
 
@@ -145,21 +145,25 @@ class _WebdriverState:
 
     def _create(self, kind: DriverKind | None) -> WebDriver:
         driver_kind = kind or self.kind
-
+        errors = []
         if driver_kind is None:
-            driver = _try_create_chromium_webdriver()
+            driver, err = _try_create_chromium_webdriver()
             if driver is not None:
                 self.kind = "chromium"
                 return driver
-
-            driver = _try_create_firefox_webdriver()
+            
+            errors.append(err)
+                
+            driver, err = _try_create_firefox_webdriver()
             if driver is not None:
                 self.kind = "firefox"
                 return driver
+            
+            errors.append(err)
 
             raise RuntimeError("Neither firefox and geckodriver nor a variant of chromium browser and " \
                                "chromedriver are available on system PATH. You can install the former " \
-                               "with 'conda install -c conda-forge firefox geckodriver'.")
+                               "with 'conda install -c conda-forge firefox geckodriver'.", f"Exception detail: {'\n'.join(errors)}")
         elif driver_kind == "chromium":
             return create_chromium_webdriver()
         elif driver_kind == "firefox":
